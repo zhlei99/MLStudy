@@ -7,6 +7,7 @@ Created on Wed May 23 14:04:36 2018
 """
 import numpy as np
 import bayes
+import chardet
 def loadDataSet():
     postingList=[['my', 'dog', 'has', 'flea', 'problems', 'help', 'please'],
                  ['maybe', 'not', 'take', 'him', 'to', 'dog', 'park', 'stupid'],
@@ -106,7 +107,10 @@ def textParse(bigString):
     import re
 #    regEx = re.compile('\\W*') 
 #    listOfTokens = regEx.split(bigString)
-    listOfTokens = re.split(r'\W*', bigString) 
+    if isinstance(bigString,str) :
+        listOfTokens = re.split(r'\W*', bigString) 
+    else:
+        print (type(bigString))
 #    print ("listOfTokens is :%s" %listOfTokens)
     return [tok.lower() for tok in listOfTokens if len(tok) > 2 ]
 
@@ -115,20 +119,42 @@ def spamTest():
     classList = []
     fullText =[]
     for i in range (1,26):              #load and parse text files
-        try:
-            wordList = textParse(open('./data/email/spam/%d.txt' % i ).read())
-        except :
-            print ('./data/email/spam/%d.txt' % i )
+        # open by byte
+        textContent = open('./data/email/spam/%d.txt' % i, 'rb').read()
+        #如果读出的文件有特殊编码，则检测编码格式，用特定的编码解码二进制内容，转变成字符
+        textContent = textContent.decode(chardet.detect(textContent)['encoding'])
+        
+        if isinstance(textContent,str) :
+            wordList = textParse(textContent)
+        else:
+            print ("errro : ",'./data/email/spam/%d.txt' % i)
+            print (type(textContent))
+            print (textContent)
+#        wordList = textParse(open('./data/email/spam/%d.txt' % i, 'rb').read())
+        #如果读出的文件有特殊编码，则检测编码格式，用特定的编码解码二进制内容，转变成字符
+       
+            
+        #print ('./data/email/spam/%d.txt' % i )
 #        print (type(wordList))
         docList.append(wordList)
         fullText.extend(wordList)
         classList.append(1)
-        wordList = textParse(open('./data/email/ham/%d.txt' % i ).read())
+        textContent = open('./data/email/ham/%d.txt' % i, 'rb').read()
+        textContent = textContent.decode(chardet.detect(textContent)['encoding'])
+        if isinstance(textContent,str) :
+            wordList = textContent
+            wordList = textParse(textContent)
+        else:
+            print ("errro : ",'./data/email/ham/%d.txt' % i)
+            print (type(textContent))
+            print (textContent)
+        
+#        wordList = textParse(open('./data/email/ham/%d.txt' % i ,'rb').read())
         docList.append(wordList)
         fullText.extend(wordList)
         classList.append(0)
     vocabList = createVocabList(docList)
-    trainingSet = range(50)
+    trainingSet = list(range(50))
     testSet = []
     for i in range(10):        
         randIndex = int(np.random.uniform(0,len(trainingSet)) )  #randomly create the training set
@@ -140,12 +166,14 @@ def spamTest():
         trainMat.append(setOfWords2Vec(vocabList,docList[docIndex] ))
         trainClasses.append(classList[docIndex])
     p0V, p1V ,pAb = bayes.trainNB0(trainMat, trainClasses)
+#    print (p0V, p1V ,pAb)
+#    print (vocabList)
     errorCount = 0
     for docIndex in testSet:
         textVector = setOfWords2Vec(vocabList,docList[docIndex])
         if classifyNB(textVector, p0V , p1V , pAb) != classList[docIndex]:
             errorCount += 1
-    print ("the error rate is :" (float(errorCount)/len(testSet)))
+    print ("the error rate is :" ,(float(errorCount)/len(testSet)),'\n',"the number of error is :",errorCount)
     
 
 
